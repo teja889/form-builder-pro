@@ -27,9 +27,9 @@ import {
   removeValidationRule,
   updateValidationRule,
 } from "../formBuilderSlice";
-import type { ValidationRule } from "../../../types";
+import type { ValidationRule, FormField } from "../../../types";
 
-// A helper map for our validation rules
+// Helper map for validation rules
 const availableRules: {
   type: ValidationRule["type"];
   label: string;
@@ -42,84 +42,83 @@ const availableRules: {
   { type: "customPassword", label: "Password Policy" },
 ];
 
-export const FieldConfigurationPanel = () => {
-  const dispatch = useAppDispatch();
-  const { fields, selectedFieldId } = useAppSelector(
-    (state) => state.formBuilder
-  );
-  const selectedField = fields.find((f) => f.id === selectedFieldId);
+// Component for editing select/radio options
+const OptionsEditor = ({
+  selectedField,
+  dispatch,
+}: {
+  selectedField: FormField;
+  dispatch: ReturnType<typeof useAppDispatch>;
+}) => (
+  <Box>
+    <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+      Manage Options
+    </Typography>
+    <Stack spacing={1}>
+      {selectedField.options?.map((option, index) => (
+        <Box key={index} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <TextField
+            value={option}
+            onChange={(e) =>
+              dispatch(
+                updateOptionInField({
+                  fieldId: selectedField.id,
+                  optionIndex: index,
+                  newText: e.target.value,
+                })
+              )
+            }
+            size="small"
+            fullWidth
+          />
+          <IconButton
+            size="small"
+            onClick={() =>
+              dispatch(
+                removeOptionFromField({
+                  fieldId: selectedField.id,
+                  optionIndex: index,
+                })
+              )
+            }
+            color="error"
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      ))}
+      <Button
+        startIcon={<AddCircleOutlineIcon />}
+        onClick={() =>
+          dispatch(addOptionToField({ fieldId: selectedField.id }))
+        }
+        sx={{ mt: 1 }}
+      >
+        Add Option
+      </Button>
+    </Stack>
+  </Box>
+);
+
+// Component for editing validation rules
+const ValidationsEditor = ({
+  selectedField,
+  dispatch,
+}: {
+  selectedField: FormField;
+  dispatch: ReturnType<typeof useAppDispatch>;
+}) => {
   const [selectedRule, setSelectedRule] = React.useState<
     ValidationRule["type"] | ""
   >("");
 
-  // ... (handleUpdate and OptionsEditor are the same)
-  const handleUpdate = (newProps: object) => {
-    dispatch(updateField({ id: selectedField!.id, newProps }));
-  };
-
-  const OptionsEditor = () => (
-    <Box>
-      <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-        Manage Options
-      </Typography>
-      <Stack spacing={1}>
-        {selectedField!.options?.map((option, index) => (
-          <Box
-            key={index}
-            sx={{ display: "flex", alignItems: "center", gap: 1 }}
-          >
-            <TextField
-              value={option}
-              onChange={(e) =>
-                dispatch(
-                  updateOptionInField({
-                    fieldId: selectedField!.id,
-                    optionIndex: index,
-                    newText: e.target.value,
-                  })
-                )
-              }
-              size="small"
-              fullWidth
-            />
-            <IconButton
-              size="small"
-              onClick={() =>
-                dispatch(
-                  removeOptionFromField({
-                    fieldId: selectedField!.id,
-                    optionIndex: index,
-                  })
-                )
-              }
-              color="error"
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        ))}
-        <Button
-          startIcon={<AddCircleOutlineIcon />}
-          onClick={() =>
-            dispatch(addOptionToField({ fieldId: selectedField!.id }))
-          }
-          sx={{ mt: 1 }}
-        >
-          Add Option
-        </Button>
-      </Stack>
-    </Box>
-  );
-
-  // NEW: Component for the validations section
-  const ValidationsEditor = () => (
+  return (
     <Box>
       <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
         Validations
       </Typography>
-      {/* List existing rules */}
       <Stack spacing={2}>
-        {selectedField!.validations.map((rule, index) => (
+        {selectedField.validations.map((rule, index) => (
           <Paper key={index} variant="outlined" sx={{ p: 2 }}>
             <Box
               sx={{
@@ -137,7 +136,7 @@ export const FieldConfigurationPanel = () => {
                 onClick={() =>
                   dispatch(
                     removeValidationRule({
-                      fieldId: selectedField!.id,
+                      fieldId: selectedField.id,
                       ruleIndex: index,
                     })
                   )
@@ -159,7 +158,7 @@ export const FieldConfigurationPanel = () => {
                   onChange={(e) =>
                     dispatch(
                       updateValidationRule({
-                        fieldId: selectedField!.id,
+                        fieldId: selectedField.id,
                         ruleIndex: index,
                         newRuleProps: { value: e.target.value },
                       })
@@ -174,7 +173,7 @@ export const FieldConfigurationPanel = () => {
                 onChange={(e) =>
                   dispatch(
                     updateValidationRule({
-                      fieldId: selectedField!.id,
+                      fieldId: selectedField.id,
                       ruleIndex: index,
                       newRuleProps: { message: e.target.value },
                     })
@@ -186,7 +185,6 @@ export const FieldConfigurationPanel = () => {
           </Paper>
         ))}
       </Stack>
-      {/* Add new rule */}
       <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
         <FormControl fullWidth size="small">
           <InputLabel>Rule Type</InputLabel>
@@ -210,7 +208,7 @@ export const FieldConfigurationPanel = () => {
             if (selectedRule) {
               dispatch(
                 addValidationRule({
-                  fieldId: selectedField!.id,
+                  fieldId: selectedField.id,
                   rule: { type: selectedRule, message: "" },
                 })
               );
@@ -223,6 +221,15 @@ export const FieldConfigurationPanel = () => {
       </Box>
     </Box>
   );
+};
+
+// Main component export
+export const FieldConfigurationPanel = () => {
+  const dispatch = useAppDispatch();
+  const { fields, selectedFieldId } = useAppSelector(
+    (state) => state.formBuilder
+  );
+  const selectedField = fields.find((f) => f.id === selectedFieldId);
 
   if (!selectedField) {
     return (
@@ -238,8 +245,12 @@ export const FieldConfigurationPanel = () => {
     );
   }
 
+  const handleUpdate = (newProps: object) => {
+    dispatch(updateField({ id: selectedField.id, newProps }));
+  };
+
   return (
-    <Paper elevation={2} sx={{ p: 2, height: "100%" }}>
+    <Paper elevation={2} sx={{ p: 2, height: "100%", overflowY: "auto" }}>
       <Typography variant="h6" sx={{ mb: 1 }}>
         Configure: {selectedField.type}
       </Typography>
@@ -257,14 +268,12 @@ export const FieldConfigurationPanel = () => {
           onChange={(e) => handleUpdate({ placeholder: e.target.value })}
           fullWidth
         />
-
         <TextField
           label="Default Value"
           value={selectedField.defaultValue || ""}
           onChange={(e) => handleUpdate({ defaultValue: e.target.value })}
           fullWidth
         />
-
         <FormControlLabel
           control={
             <Switch
@@ -274,10 +283,15 @@ export const FieldConfigurationPanel = () => {
           }
           label="Required"
         />
+
         {(selectedField.type === "select" ||
-          selectedField.type === "radio") && <OptionsEditor />}
+          selectedField.type === "radio") && (
+          <OptionsEditor selectedField={selectedField} dispatch={dispatch} />
+        )}
+
         <Divider sx={{ pt: 1 }} />
-        <ValidationsEditor />
+
+        <ValidationsEditor selectedField={selectedField} dispatch={dispatch} />
       </Stack>
     </Paper>
   );
